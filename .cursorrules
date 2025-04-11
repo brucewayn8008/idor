@@ -1,0 +1,173 @@
+
+
+## 📄 Product Requirements Document (PRD)
+
+### 🧰 Product Name:
+**IDOR-BAC Hunter**
+
+---
+
+### 🎯 Objective:
+Build a security testing tool that detects **Insecure Direct Object References (IDOR)** and **Broken Access Control (BAC)** vulnerabilities by analyzing and comparing endpoint responses using different user sessions, based on a crawled sitemap exported from **Burp Suite**.
+
+---
+
+### 🧩 Features & Functional Requirements
+
+#### 1. **Input Module**
+- 📂 Accept a sitemap file exported from Burp Suite (e.g., `sitemap.txt`, `urls.json`, etc.).
+- 🧑 Accept a `sessions.json` config file with multiple user credentials (cookie or auth token).
+- 🔁 Detect and handle cookie-based or token-based authentication.
+
+##### Example `sessions.json`:
+```json
+{
+  "admin": {
+    "cookie": "sessionid=admin123"
+  },
+  "user1": {
+    "cookie": "sessionid=user456"
+  },
+  "user2": {
+    "token": "Bearer xyz789"
+  }
+}
+```
+
+---
+
+#### 2. **Request Engine**
+- 🌐 For each endpoint:
+  - Send request using **user1**, **user2**, **admin** sessions.
+- 🧪 Test with methods: `GET`, `POST`, `PUT`, `DELETE` (based on endpoint).
+- 🛠 Headers injected dynamically based on session config.
+
+---
+
+#### 3. **Response Analyzer**
+- 🧠 Compare responses between users:
+  - Status code differences
+  - Body length & content hash
+  - Key string matches like `"Access Denied"`, `"Unauthorized"`, `"admin"`, `"username"`, etc.
+- ⚠ Flag suspicious differences:
+  - Normal user getting admin data
+  - User A seeing User B's content
+  - Same response for everyone (no auth check)
+
+---
+
+#### 4. **Vulnerability Detector**
+- ✅ Detects:
+  - **IDOR**: Access to objects/resources that should be restricted.
+  - **BAC**: Unrestricted access to protected endpoints.
+- 🔍 Compares responses to determine if access control is bypassed.
+
+---
+
+#### 5. **Smart ID Substitution (Advanced - Optional)**
+- Automatically fuzz numeric or UUID values in URL paths or parameters.
+- e.g., `/api/users/1001` → try `1002`, `1003` for different users.
+
+---
+
+#### 6. **Output & Reporting**
+- 📄 Generate a report (JSON & console):
+  ```json
+  {
+    "endpoint": "/api/users/1001",
+    "method": "GET",
+    "vuln": "IDOR",
+    "details": {
+      "accessed_by": ["user2"],
+      "status_code": 200,
+      "diff": "user2 saw another user's info"
+    }
+  }
+  ```
+- Also log plain-text to `results.txt`.
+
+---
+
+### 🖥 Target Environment
+- Platform: Python 3.x
+- IDE: Cursor IDE (use GPT comments and docstrings for explainability)
+- Dependencies:
+  - `requests`
+  - `tqdm`
+  - `difflib` or `deepdiff` for response comparison
+  - `argparse` for CLI usability
+
+---
+
+### 🧪 Test Plan
+- Use known vulnerable apps (like DVWA, BWAPP, Juice Shop).
+- Manually validate a few IDORs to confirm tool flags them.
+- Test edge cases (403 responses, redirects, JSON vs HTML formats).
+
+---
+
+### 🧱 MVP Breakdown
+
+#### Week 1:
+- Input parsing (sitemap + session file)
+- Basic request engine
+- Logging and CLI structure
+
+#### Week 2:
+- Response diffing logic
+- IDOR & BAC detection
+- Output report module
+
+#### Week 3:
+- Smart ID substitution
+- Swagger/OpenAPI parser (if needed)
+- UI or GUI layer (optional)
+
+
+
+## 📁 Folder Structure
+
+```
+idor-bac-hunter/
+│
+├── main.py                         # Entry point – CLI handler and execution
+├── README.md                       # Project overview & usage instructions
+├── requirements.txt                # Dependencies list (requests, tqdm, etc.)
+├── config/
+│   └── sessions.json               # Example user session config
+│
+├── input/
+│   └── sitemap.txt                 # List of endpoints (from Burp Suite or custom)
+│
+├── core/
+│   ├── __init__.py
+│   ├── request_handler.py          # Handles sending requests with different sessions
+│   ├── session_loader.py           # Loads and formats session tokens/cookies
+│   ├── analyzer.py                 # Compares responses and detects anomalies
+│   └── detector.py                 # Logic to determine IDOR/BAC issues
+│
+├── utils/
+│   ├── __init__.py
+│   ├── logger.py                   # Logging and console output
+│   ├── helpers.py                  # Misc tools: URL parser, header builder, etc.
+│   └── id_fuzzer.py                # (Optional) Smart ID substitution module
+│
+├── output/
+│   ├── results.json                # JSON report of all potential vulnerabilities
+│   └── results.txt                 # Plain-text summary
+│
+└── tests/
+    ├── test_endpoints.py          # Unit tests for parsing/handling endpoints
+    └── test_detector.py           # Tests for vulnerability detection logic
+```
+
+---
+
+### ✅ Recommended First Files to Build
+
+1. `main.py`: loads sitemap + sessions, triggers scan
+2. `session_loader.py`: parses `sessions.json`
+3. `request_handler.py`: sends requests with cookies/tokens
+4. `analyzer.py`: compares results
+5. `detector.py`: flags suspicious patterns
+6. `logger.py`: print/save results
